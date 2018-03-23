@@ -1,0 +1,29 @@
+<form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input #username="ngModel" type="text" class="form-control" id="username" 
+          required  
+          [(ngModel)]="model.username" name="username" 
+          placeholder="Enter username">
+        <div [hidden]="username.valid || username.pristine" 
+              class="alert alert-danger">
+              The username is required.
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input #password="ngModel" type="password" class="form-control" id="password"
+          required
+          [(ngModel)]="model.password" name="password" placeholder="Password">
+          <div [hidden]="password.valid || password.pristine" 
+            class="alert alert-danger">
+            The password is required.
+          </div>
+        </div>
+      
+      <button [disabled]="loginForm.invalid" type="submit" class="btn btn-success">Login</button>
+      <p>
+        <small>Create new user on the console using the command gt create --username bob --password secret.</small>
+      </p>
+
+</form>
