@@ -1,5 +1,5 @@
 '''
-Backaend for Algo Trading bot
+Backend for Algo Trading bot
 '''
 import os
 import uuid
@@ -96,24 +96,20 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        print('1')
+
         if 'x-access-token' in request.headers:
             token = request.headers['x-access-token']
-        print('2')
         
         if not token:
             return jsonify({'message': 'Login required.'}), 401
-        print('3')
 
         try:
             data = jwt.decode(token, app.config['JWT_SECRET_KEY'])
             current_user = User.query.filter_by(public_id=data['public_id']).first()
         except:
-            print('4')
             return jsonify({'message': 'Login required.'}), 401
         
         if not current_user or not token == current_user.token.decode('ascii'):
-            print('5', current_user, 'token', current_user.token, 'token2', token)
             return jsonify({'message': 'Login required.'}), 401
 
         return f(current_user, *args, **kwargs)
@@ -129,7 +125,6 @@ def get_all_users(current_user):
         user_data['public_id'] = user.public_id
         user_data['name'] = user.name
         user_data['password'] = user.password
-        #user_data['token'] = user.token
         user_data['admin'] = user.admin
         output.append(user_data)
 
@@ -148,7 +143,6 @@ def get_one_user(current_user, public_id):
     user_data['public_id'] = user.public_id
     user_data['name'] = user.name
     user_data['password'] = user.password
-    user_data['token'] = user.token
     user_data['admin'] = user.admin
 
     return jsonify({"user": user_data})
@@ -194,10 +188,6 @@ def delete_user(current_user, public_id):
 @app.route('/login', methods=['POST'])
 def login():
     credentials = request.get_json()
-
-    for keys,values in credentials.items():
-        print(keys)
-        print(values)
         
     if not credentials or not credentials['username'] or not credentials['password']:
         return jsonify({"message": "Login failed."}), 401
