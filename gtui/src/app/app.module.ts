@@ -8,25 +8,28 @@ import { AppComponent } from './app.component';
 import { AppRouterModule } from './app.router.module';
 import { HomeComponent } from './home/home.component';
 import { PossibleBuysService } from './PossibleBuysService';
-import { HttpBaseUrlInterceptor } from './HttpBaseUrlInterceptor';
-import { LoginComponent } from './login/login.component';
+import { LoginModule } from './login/login.module';
+import { SharedModule } from './shared/shared.module';
+import { HttpAccessTokenInterceptor } from './HttpAccessTokenInterceptor';
 
 
 @NgModule({
   imports: [
     BrowserModule,
     HttpClientModule,
-    FormsModule,
+    SharedModule,
+    LoginModule,
     AppRouterModule
   ],
   declarations: [
     AppComponent,
-    HomeComponent,
-    LoginComponent
+    HomeComponent
   ],
-  providers: [{
+  providers: [
+    // SecurityService,
+    {
       provide: HTTP_INTERCEPTORS,
-      useClass: HttpBaseUrlInterceptor,
+      useClass: HttpAccessTokenInterceptor,
       multi: true
     }
   ],

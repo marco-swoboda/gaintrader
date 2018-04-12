@@ -9,9 +9,9 @@ import click
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-
 
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__))
 DB_PATH = os.path.join(PROJECT_ROOT, 'data', 'gaintrader.db')
@@ -24,6 +24,8 @@ print(app.config['SQLALCHEMY_DATABASE_URI'])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+CORS(app)
+
 
 class User(db.Model):
     '''
@@ -48,10 +50,13 @@ class Config(db.Model):
     value = db.Column(db.String(250))
 
 @app.cli.command('createuser')
-@click.option('--username', help="Enter the username.")
+@click.option('--username', prompt=True, help="Enter the username.")
 @click.option('--password', prompt=True, hide_input=True, help="Enter the user's password.")
 def create_user_cli(username, password):
     """Creates a new admin user."""
+    if not username or not password:
+        print('Username and password is required.')
+        return
     hashed_password = generate_password_hash(password, method='sha256')
     new_user = User.query.filter_by(name=username).first()
     if not new_user:
@@ -61,7 +66,7 @@ def create_user_cli(username, password):
     else:
         new_user.password = hashed_password
         new_user.admin = True
-        print('Replacing user', username, 'with password', password, '.')
+        print(f"Resetting password for user {username}.")
     db.session.commit()
 
 @app.cli.command('reset_jwt_secret')
@@ -91,20 +96,24 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-
+        print('1')
         if 'x-access-token' in request.headers:
             token = request.headers['x-access-token']
+        print('2')
         
         if not token:
             return jsonify({'message': 'Login required.'}), 401
+        print('3')
 
         try:
             data = jwt.decode(token, app.config['JWT_SECRET_KEY'])
             current_user = User.query.filter_by(public_id=data['public_id']).first()
         except:
+            print('4')
             return jsonify({'message': 'Login required.'}), 401
         
-        if not current_user or not token == current_user.token:
+        if not current_user or not token == current_user.token.decode('ascii'):
+            print('5', current_user, 'token', current_user.token, 'token2', token)
             return jsonify({'message': 'Login required.'}), 401
 
         return f(current_user, *args, **kwargs)
@@ -120,10 +129,11 @@ def get_all_users(current_user):
         user_data['public_id'] = user.public_id
         user_data['name'] = user.name
         user_data['password'] = user.password
-        user_data['token'] = user.token
+        #user_data['token'] = user.token
         user_data['admin'] = user.admin
         output.append(user_data)
 
+    print(output)
     return jsonify({"users" : output})
 
 @app.route('/user/<public_id>', methods=['GET'])
@@ -181,19 +191,23 @@ def delete_user(current_user, public_id):
 
     return jsonify({"message": "User has been deleted!"})
 
-@app.route('/login')
+@app.route('/login', methods=['POST'])
 def login():
     credentials = request.get_json()
-    
-    if not credentials or not credentials.username or not credentials.password:
+
+    for keys,values in credentials.items():
+        print(keys)
+        print(values)
+        
+    if not credentials or not credentials['username'] or not credentials['password']:
         return jsonify({"message": "Login failed."}), 401
     
-    user = User.query.filter_by(name=credentials.username).first()
+    user = User.query.filter_by(name=credentials['username']).first()
 
     if not user:
         return jsonify({"message": "Login failed."}), 401
 
-    if not check_password_hash(user.password, credentials.password):
+    if not check_password_hash(user.password, credentials['password']):
         return jsonify({"message": "Login failed."}), 401
 
     token = jwt.encode({'public_id': user.public_id, 'exp' : dt.datetime.utcnow() + dt.timedelta(minutes=60)}, app.config['JWT_SECRET_KEY'])
